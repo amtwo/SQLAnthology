@@ -1,4 +1,4 @@
-﻿############################################################################
+############################################################################
 #
 # Params
 #
@@ -90,7 +90,7 @@ $rssList | ForEach-Object {
     #Write-Host $_.blogName
     #Write-Host $_.Url
 
-    $rss = Invoke-WebRequest $_.Url
+    $rss = Invoke-WebRequest $_.Url -UseBasicParsing
 
     if ($rss.StatusCode -ne 200){
         #This should log an error somewhere
@@ -130,7 +130,7 @@ $rssList | ForEach-Object {
         # Add to archive if Post from the last 7 days that isn't in the archive
 		if ($postPubDate -gt (Get-Date).AddDays(-7)) {
             Invoke-Sqlcmd -ServerInstance $sqlInstance -Database $sqlDatabase -Username $sqlUsername -Password $sqlPassword `
-                        -Query "EXEC anthology.Archive_Upsert @PostURL = N'$($postUrl)', @BlogName = N'$($blogName)', @PostTitle = N'$($postTitle)', @PostAuthor = N'$($postAuthor)', @PostPublishDate = N'$($postPubDate)'"
+                        -Query "EXEC anthology.Archive_Upsert @PostURL = N'$($postUrl.Replace("'","''"))', @BlogName = N'$($blogName.Replace("'","''"))', @PostTitle = N'$($postTitle.Replace("'","''"))', @PostAuthor = N'$($postAuthor.Replace("'","''"))', @PostPublishDate = N'$($postPubDate)'"
         }
      }#EndForEach Tweet
     
@@ -146,12 +146,19 @@ $rssList | ForEach-Object {
 $untweeted = Invoke-Sqlcmd -ServerInstance $sqlInstance -Database $sqlDatabase -Username $sqlUsername -Password $sqlPassword -Query "EXEC anthology.Archive_GetNextTweet"
 $untweeted.TweetText
 
-# Send the tweet
-$null = Send-Tweet $untweeted.TweetText
+if(($untweeted.TweetText).length -gt 1){
+    try{
+        # Send the tweet
+        $null = Send-Tweet $untweeted.TweetText
 
-# Mark this post as tweeted
-Invoke-Sqlcmd -ServerInstance $sqlInstance -Database $sqlDatabase -Username $sqlUsername -Password $sqlPassword -Query "EXEC anthology.Archive_Upsert @PostURL = N'$($untweeted.postUrl)',@TweetText = N'$($untweeted.TweetText)', @IsTweeted = 1"
-
+        # Mark this post as tweeted
+        Invoke-Sqlcmd -ServerInstance $sqlInstance -Database $sqlDatabase -Username $sqlUsername -Password $sqlPassword -Query "EXEC anthology.Archive_Upsert @PostURL = N'$($untweeted.postUrl.Replace("'","''"))',@TweetText = N'$($untweeted.TweetText.Replace("'","''"))', @IsTweeted = 1"
+        }
+    catch{
+        Write-Host "Error tweeting"
+        #yea, I should do actual error logging, eh?
+        }
+}
 
 ############################################################################
 ############################################################################
