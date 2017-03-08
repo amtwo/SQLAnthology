@@ -75,7 +75,7 @@ workflow Send-Tweet {
  }
 
 
-Start-Transcript -Path C:\Scripts\SQLAnthology\transcript.txt -Append
+Start-Transcript -Path C:\Scripts\SQLAnthology\transcript_$(Get-Date -format yyyy_MM).txt -Append
 
 
 ############################################################################
